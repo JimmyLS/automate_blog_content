@@ -48,6 +48,7 @@ def read_content_time(file_path):
     :param file_path: .md file path
     :return: The time date with format 'Year-Month-Day'
     """
+    # print(file_path)
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.readlines()
         content_time_str = content[2].rstrip("\n")
@@ -163,49 +164,76 @@ def remove_start_brackets(file_path):
         print(e)
 
 
-def rename_img_file(path):
+def get_img_folder_name(file_path):
+    """
+    This function will return the img folder name of input post by accepting the .md file path
+    :param file_path: .md file path
+    :return: img folder name
+    """
+    file_name = os.path.basename(file_path)
+    base_path = os.path.dirname(file_path)
+    file_name_list = file_name.split('-')[3:]
+    separator = ' '
+    post_title = separator.join(file_name_list).replace(".md", "")
+    img_folder_name = ''
+    for item in os.listdir(base_path):
+        if os.path.isdir(os.path.join(base_path, item)) and post_title in item.replace("-", " "):
+            img_folder_name = item
+    return img_folder_name
+
+
+def get_img_list(file_path):
+    """
+    This function will return the img list of input post by accepting the .md file path
+    :param file_path: .md file path
+    :return: img list
+    """
+    base_path = os.path.dirname(file_path)
+    img_folder_name = get_img_folder_name(file_path)
+    # print(image_folder_name)
+    content_list = os.listdir(os.path.join(base_path, img_folder_name))
+    img_list = []
+    for item in content_list:
+        file_ext = os.path.splitext(item)[1]
+        if file_ext in ['.jpg', '.gif', '.png']:
+            img_list.append(item)
+    return img_list
+
+
+def rename_img_file(file_path):
     """
     This function will rename the image files from 'image00x' to 'first 20 chars of post name + _image00x'.
     This will ensure image name is unique so that we can add it in to Jekyll blogs.
     This function will also copy the image files into the images folder within path.
-    :param path: The folder contains generated image file folders
+    :param file_path: The .md file path
     :return:
     """
-    items = os.listdir(path)
-    img_folder_list = []
+    file_name = os.path.basename(file_path)
+    base_path = os.path.dirname(file_path)
+    img_folder = get_img_folder_name(file_path)
+    img_file_list = get_img_list(file_path)
+    img_file_list.sort()
     new_file_name = ''
-    for item in items:
-        if os.path.isdir(os.path.join(path, item)):
-            img_folder_list.append(item)
-    for img_folder in img_folder_list:
-        content = os.listdir(os.path.join(path, img_folder))
-        img_file_list = []
-        for img in content:
-            file_name, file_ext = os.path.splitext(img)
-            # Only check for image file which extension in .jpg, .gif, .png.
-            if file_ext in ['.jpg', '.gif', '.png']:
-                img_file_list.append(img)
-        img_file_list.sort()
-        try:
-            for i in range(0, len(img_file_list)):
-                new_file_ext = os.path.splitext(img_file_list[i])[1]
-                # Don't make any change if the image file name not start with 'image', which means it already has been \
-                # renamed.
-                if img_file_list[i][:5] != 'image':
-                    continue
-                else:
-                    # Rename the image file
-                    new_file_name = img_folder.replace(" ", "_")[0:19] + '_image0' + str(i+1).zfill(2) + new_file_ext
-                    os.rename(os.path.join(path, img_folder, img_file_list[i]),
-                              os.path.join(path, img_folder, new_file_name))
-                    copy_src = os.path.join(path, img_folder, new_file_name)
-                    copy_dst = os.path.join(path, 'images', new_file_name)
-                    # Copy image file to 'images' folder if image does not exist
-                    if not os.path.exists(copy_dst):
-                        copyfile(copy_src, copy_dst)
-            print("Rename and copy image files successfully!")
-        except FileExistsError:
-            print("Target img file with name {0} already exists!".format(new_file_name))
+    try:
+        for i in range(0, len(img_file_list)):
+            new_file_ext = os.path.splitext(img_file_list[i])[1]
+            # Don't make any change if the image file name not start with 'image', which means it already has been \
+            # renamed.
+            if img_file_list[i][:5] != 'image':
+                continue
+            else:
+                # Rename the image file
+                new_file_name = img_folder.replace(" ", "_")[0:19] + '_image0' + str(i+1).zfill(2) + new_file_ext
+                os.rename(os.path.join(base_path, img_folder, img_file_list[i]), os.path.join(base_path, img_folder,
+                                                                                              new_file_name))
+                copy_src = os.path.join(base_path, img_folder, new_file_name)
+                copy_dst = os.path.join(base_path, 'images', new_file_name)
+                # Copy image file to 'images' folder if image does not exist
+                if not os.path.exists(copy_dst):
+                    copyfile(copy_src, copy_dst)
+        print("Rename and copy image files successfully! .md file name: {0}.".format(file_name))
+    except FileExistsError:
+        print("Target img file with name {0} already exists!".format(new_file_name))
     print("======================================")
 
 
@@ -218,39 +246,39 @@ def modify_image_link(file_path, target_jekyll_img_folder):
     """
     file_name = os.path.basename(file_path)
     base_path = os.path.dirname(file_path)
-    file_name_list = file_name.split('-')[3:]
-    separator = ' '
-    post_title = separator.join(file_name_list).replace(".md", "")
-    img_list = []
-    # Get image list that matches with .md file
-    for item in os.listdir(base_path):
-        image_folder_name = item.replace("-", " ")
-        if os.path.isdir(os.path.join(base_path, item)) and post_title in image_folder_name:
-            content_list = os.listdir(os.path.join(base_path, item))
-            for item1 in content_list:
-                file_ext = os.path.splitext(item1)[1]
-                if file_ext in ['.jpg', '.gif', '.png']:
-                    img_list.append(item1)
-    img_list.sort()
+    img_list = get_img_list(file_path)
     # Replace image link in .md file with desired format
     with open(file_path, 'r', encoding='utf-8') as f:
         file_lines = f.readlines()
-        pattern = re.compile(r'<img src="media/image', re.IGNORECASE)
+        pattern = re.compile(r'/image', re.IGNORECASE)
         match_count = 0
+        matched_line_num = []
         try:
             for i in range(0, len(file_lines)):
-                rest = pattern.match(file_lines[i])
-                if rest is not None:  # match found
+                rest = pattern.findall(file_lines[i])
+                if len(rest) != 0:  # match found
                     match_count += 1
-                    file_lines[i] = "![{0}](/assets/images/{1}/{2})\n"\
-                        .format(str(match_count), target_jekyll_img_folder, img_list[match_count-1])
+                    matched_line_num.append(i)
+            # Only rename and copy images when match_count = image count
+            if match_count != len(img_list):
+                print('Error occurred! Img matched count in .md file not equal with img count. Will not perform image '
+                      'rename, copy and modify image link in .md file.\nmd file name: {0}\nmatch_count in md: {1}\n'
+                      'img count in image folder: {2}'.format(file_name, match_count, len(img_list)))
+                print('======================================')
+            else:
+                rename_img_file(file_path)
+                img_list_after_rename = get_img_list(file_path)
+                img_list_after_rename.sort()
+                for i in range(0, len(matched_line_num)):
+                    file_lines[matched_line_num[i]] = "![{0}](/assets/images/{1}/{2})\n"\
+                        .format(str(i), target_jekyll_img_folder, img_list_after_rename[i])
         except IndexError as e:
             blog_name = os.path.basename(file_path)
             print("Failed to modify image link for blog: {0}\nLine_No: {1}".format(blog_name, str(i+1)))
             print(e)
     # Write changes to the .md file, only do this when match found
     try:
-        if match_count > 0:
+        if match_count > 0 and (match_count == len(img_list)):
             with open(file_path, 'w', encoding='utf-8') as f:
                 for data in file_lines:
                     f.write(data)
@@ -274,15 +302,13 @@ if __name__ == '__main__':
     print("======================================")
     print("Start rename blog files...")
     rename_file(blog_path)
-    print("Start rename image files and copy images to 'images' folder...")
     if not os.path.exists(os.path.join(blog_path, 'images')):
         os.makedirs(os.path.join(blog_path, 'images'))
-    rename_img_file(blog_path)
     item_list = os.listdir(blog_path)
     blogs = []
     try:
-        print("Start modifying blog header, remove internal links, remove start angle brackets,"
-              " and modify image links...")
+        print("Start modifying blog header, rename image files, copy images to 'images' folder, remove internal links, "
+              "remove start angle brackets, and modify image links...")
         for i in item_list:
             if os.path.isfile(os.path.join(blog_path, i)):
                 blogs.append(i)
@@ -295,6 +321,7 @@ if __name__ == '__main__':
         print("Successfully completed all work!")
     except Exception as e:
         print(e)
+
 
 
 
