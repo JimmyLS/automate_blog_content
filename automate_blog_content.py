@@ -310,7 +310,8 @@ if __name__ == '__main__':
         print("Start modifying blog header, rename image files, copy images to 'images' folder, remove internal links, "
               "remove start angle brackets, and modify image links...")
         for i in item_list:
-            if os.path.isfile(os.path.join(blog_path, i)):
+            file_ext = os.path.splitext(i)[1]
+            if os.path.isfile(os.path.join(blog_path, i)) and "md" in file_ext:
                 blogs.append(i)
         for blog_item in blogs:
             blog_item_path = os.path.join(blog_path, blog_item)
